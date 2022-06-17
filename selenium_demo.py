@@ -136,3 +136,4 @@ if __name__ == '__main__':
     # url = 'https://flights.ctrip.com/online/list/oneway-ckg-bjs?_=1&depdate=2022-06-15&cabin=Y_S_C_F'
     # pattern = re.compile('(?<=depdate=).*?(?=&cabin)')
     # print(re.sub(pattern, date, url))
+    
