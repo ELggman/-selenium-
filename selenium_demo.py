@@ -7,6 +7,7 @@ from selenium.webdriver.edge.options import Options
 from selenium.webdriver import EdgeOptions
 from lxml import etree
 import time
+import logging
 from threading import Thread
 import re
 
