@@ -37,10 +37,10 @@ root_logger = logging.getLogger()
 
 
 class Subprice:
-    def __init__(self, account, password):
+    def __init__(self):
         self.brow = webdriver.Edge(service=s, options=edge_options)
         self.brow.get('https://passport.ctrip.com/user/login')  # 用户的登录界面网址
-        self.login(account, password)
+        # self.login(account, password)
 
     def login(self, account, password):
 
@@ -65,7 +65,13 @@ class Subprice:
             self.click_code()
         except:
             flag = False
+            # 在规定时间内没有捕获到验证码弹窗 判断当前网络状态
             ret = subprocess.run("ping www.baidu.com -n 1", shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            if ret.returncode == 0:  # 当前网络良好,则代表已成功登录，无验证码弹窗
+                pass
+            else:  # 网络状态不好，应该抛出异常，这里暂时不写
+                logger.info('当前网络状态较差，请检查网络状态，重新登录。')
+                return False
 
         # 在登录成功后
         sleep(2)
@@ -80,24 +86,27 @@ class Subprice:
 
         # 飞机票的选项
 
-        sleep(3)
+        sleep(0.5)
         first_option_tk = self.brow.find_element(by=By.XPATH,
                                                  value='//*[@id="leftSideNavLayer"]/div/div/div[2]/div/div[1]/div/div[2]/button')
         first_option_tk.click()
         airplane_tk_option = self.brow.find_element(by=By.XPATH,
                                                     value='//*[@id="leftSideNavLayer"]/div/div/div[2]/div/div[1]/div/div[2]/button')
         airplane_tk_option.click()
-        sleep(0.4)
+        # sleep(0.4)
+        return True
 
     # 滚轮验证码的点击因为不需要滚轮的点击
 
     # 滑块验证码的验证
 
     def ver_slidecode(self):  # 在验证码登录的时可以利用循环来进行点击
-        logger.info('正在破解第一重验证码')
+        start_time = time.time()
+        flag = 0
         while True:
             try:
                 ver_scroll = self.brow.find_element(by=By.XPATH, value='//*[@id="sliderddnormal"]/div/div[4]/div[3]')
+                logger.info('正在破解第一重验证码')
                 sleep(1)
                 ver_scroll.click()
                 flag = 1
@@ -105,7 +114,12 @@ class Subprice:
                     break
             except:
                 # num +=1
-                pass
+                end_time = time.time()
+                if end_time - start_time >= 4:
+                    break
+        if flag != 1:
+            raise Exception
+
         # 顺序点击的验证码
 
     def click_code(self):
@@ -115,9 +129,11 @@ class Subprice:
         self.brow.save_screenshot('aa.png')  # 对当前页面保存
         code_img_ele = self.brow.find_element(by=By.XPATH, value='//*[@id="sliderddnormal"]/div')
         location = code_img_ele.location  # x,y
-        print(location)
+        # print(location)
+        logger.debug(f'验证码图片坐标{location}')
         size = code_img_ele.size  # size返回的是验证码标签返回的长和宽
-        print(size)
+        logger.debug(f'验证码标签的长和宽{size}')
+        # print(size)
         # 对应左上角和右下角的坐标
         # 获取当前的电脑的分辨率
         windows_common = WindowsCommon()
@@ -128,7 +144,9 @@ class Subprice:
             int(location['x']) * dpi_num, int(location['y']) * dpi_num, int(location['x'] + size['width']) * dpi_num,
             int(location['y'] + size['height']) * dpi_num)
         # 验证码图片确定下来了
-        print(rangle)
+        # logger.info()
+        # print(rangle)
+        logger.debug(f'验证码图片的坐标{rangle}')
         i = Image.open('./aa.png')
         code_img_name = 'code.png'
         frame = i.crop(rangle)
@@ -136,7 +154,8 @@ class Subprice:
         chaojiying = Chaojiying_Client("frants", "123456", "934829")
         im = open('code.png', 'rb').read()
         dic = chaojiying.PostPic(im, 9004)['pic_str']
-        print('dic:', dic)
+        logger.debug(f'验证码点击坐标 {dic}')
+        # print('dic:', dic)
         # 对获取到的坐标进行分割按'|'
         if '|' in dic:
             groups = dic.split('|')
@@ -153,7 +172,7 @@ class Subprice:
         login_bt = self.brow.find_element(by=By.XPATH, value='//*[@id="hp_nfes_accountbar"]/li[1]/div/button')
         login_bt.click()
 
-    def search_info(self, from_, to_, date, depart_option, class_option, passenger_info):
+    def generate_order(self, from_, to_, date, depart_option, class_option, passenger_info):
         # 需传入 起始地点 目的地 日期 选择的起飞时间段 舱位等级
         # depart_option 1：代表6点到12点 2：代表12点到18点 3：代表18点到24点
         # class_option 1:经济舱 2:商务舱/头等舱
@@ -163,6 +182,7 @@ class Subprice:
         logger.info(
             f'开始查找 在 {date} {depart_option_dic[depart_option]} 时间段，由 {from_} 去往 {to_} {class_option_dic[class_option]}的机票')
 
+        time.sleep(0.5)
         # 出发地点输入框
         from_lable = self.brow.find_element(by=By.XPATH,
                                             value='//*[@id="searchForm"]/div/div/div/div[2]/div[1]/div/div[1]/div/div/div[1]/input')
@@ -232,10 +252,10 @@ class Subprice:
         class_grade.click()
 
         # js脚本循环几次向下滑动,便于获取动态加载数据 需注意一次不能滑动太多，否则数据加载不全
-        for i in range(8):
-            time.sleep(0.5)
-            self.brow.execute_script('window.scrollBy(0,500)')
-        time.sleep(2)
+        # for i in range(8):
+        #     time.sleep(0.5)
+        #     self.brow.execute_script('window.scrollBy(0,500)')
+        # time.sleep(2)
         page_text = self.brow.page_source
 
         logger.info('正在获取航班信息...')
@@ -246,15 +266,15 @@ class Subprice:
         divs = tree.xpath('//div[@class="flight-item domestic"]')
 
         # 航班信息形如 ['河北航空', 'NS8456\xa0', '波音737(中)', '共享 '] ‘共享’项不一定均存在
-        flight_airline = divs[1].xpath('.//div[@class="flight-airline"]//text()')
+        flight_airline = divs[0].xpath('.//div[@class="flight-airline"]//text()')
 
         # 航班详细信息 flight_detail
 
         # 出发地 ['17:05', '江北国际机场', 'T3'] 可能出现没有 航站楼Terminal信息
-        depart = divs[1].xpath('.//div[@class="depart-box"]//text()')
+        depart = divs[0].xpath('.//div[@class="depart-box"]//text()')
 
         # 目的地信息 ['00:40', ' +1天', '大兴国际机场', 'T2']  第二个信息为 附加信息，可能为空 第四个信息为航站楼信息，可能不会出现该信息
-        arrival = divs[1].xpath('.//div[@class="arrive-box"]//text()')
+        arrival = divs[0].xpath('.//div[@class="arrive-box"]//text()')
 
         # # 航班准点率信息
         # arrival_rate = divs[1].xpath('.//div[@class="flight-arrival-punctuality-list"]//text()')
@@ -329,45 +349,80 @@ class Subprice:
                 time.sleep(0.5)
 
         save_order = self.brow.find_element(by=By.XPATH, value='.//a[@id="J_saveOrder"]')
-        save_order.click()
+        time.sleep(0.5)
 
-        flight_info = self.brow.find_element(by=By.XPATH, value='.//div[@id="J_flightInfo"]').get_attribute(
-            "textContent")
+        # save_order.click()
+        #
+        # flight_info = self.brow.find_element(by=By.XPATH, value='.//div[@id="J_flightInfo"]').get_attribute(
+        #     "textContent")
+        #
+        # logger.info(flight_info)
+        # total_price = self.brow.find_element(by=By.XPATH, value='.//span[@id="J_totalPrice"]').get_attribute(
+        #     "textContent")
+        # logger.debug(total_price)
+        #
+        # ordered_flag = False
+        # try:
+        #     ordered = self.brow.find_element(by=By.XPATH, value='//*[@id="J_step2"]/div[1]/div')
+        #     ordered_content = ordered.get_attribute("textContent")
+        #     if ordered_content.strip() == '15分钟内完成支付，即可预订成功。':
+        #         ordered_flag = True
+        #         logger.info('成功生成订单，向指定邮箱发送通知')
+        #         pass
+        #     else:
+        #         logger.info('订单生成失败,请重新购买')
+        #         return False
+        # except Exception:
+        #     logger.info('订单生成失败,请重新购买')
+        #     return False
 
-        logger.info(flight_info)
-        total_price = self.brow.find_element(by=By.XPATH, value='.//span[@id="J_totalPrice"]').get_attribute(
-            "textContent")
-
-        logger.debug(total_price)
-        logger.info('成功生成订单，向指定邮箱发送通知')
-        self.handle(from_, to_, date, flight_airline, depart, arrival)
-        time.sleep(5)
+        ordered_flag = False
+        if ordered_flag:
+            self.send_email(from_, to_, date, flight_airline, depart, arrival)
+            return True
+        return False
         # self.brow.quit()
 
-    def handle(self, from_, to_, date, flight_airline, depart, arrival):
-        content = f'用户您好，系统已为您抢到在 {date} {depart[0]} 出发，由 {from_}{depart[1]} 去往 {to_}{arrival[2]} 的航班票\n 详细航班信息以及乘机人信息请访问 https://passport.ctrip.com/user/login  进行查看'
-        se = Send_QQ_Email('1784800289@qq.com', content)
+    def send_email(self, from_, to_, date, flight_airline, depart, arrival):
+        content = f'用户您好，系统已为您抢到在 {date} {depart[0]} 出发，由 {from_}{depart[1]} 去往 {to_}{arrival[2]} 的航班票\n 详细航班信息以及乘机人信息请访问 https://passport.ctrip.com/user/login  进行查看，请在十五分钟内支付'
+        se = Send_QQ_Email('2509306626@qq.com', content)
         se.send()
         logger.info('邮件发送成功')
 
+    def loop_func(self, second, from_, to_, date, depart_option, class_option, passenger_info):
+        count = 1
+        while True:
+            logger.info(f'开始进行第 {count} 次轮询')
+            status = self.generate_order(from_, to_, date, depart_option, class_option, passenger_info)
+            if status:
+                logger.info('购票流程结束，停止轮询')
+                break
+            else:
+                time.sleep(second)
+                count += 1
+
 
 if __name__ == '__main__':
-    # date = ['2022', '06', '21']
-    # passenger_info = [['李欢', '500221200208274316', '15723114723'],
-    #                   ['许茂森', '500222199908184320', '15310829546']]
-    # account = '15730168247'
-    # password = '11903990112ys.'
-    # class_option = 1
-    # depart_option = 1
-    # lg = Subprice(account, password)
-    # lg.search_info('重庆', '北京', date, depart_option, class_option, passenger_info)
+    date = ['2022', '06', '26']
+    passenger_info = [['李欢', '500221200208274316', '15723114723'],
+                      ['许茂森', '500222199908184320', '15310829546']]
+    account = '15730168247'
+    password = '11903990112ys.'
+    from_ = '重庆'
+    to_ = '昆明'
+    class_option = 1
+    depart_option = 1
+    second = 60
+    ret = subprocess.run("ping www.baidu.com -n 1", shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    if ret.returncode != 0:
+        logger.info('网络错误，请检查网络重试')
+    else:
+        lg = Subprice()
+        login_status = lg.login(account, password)
+        if login_status:
+            # lg.generate_order(from_, to_, date, depart_option, class_option, passenger_info)
+            lg.loop_func(second, from_, to_, date, depart_option, class_option, passenger_info)
 
     # current_datetime = datetime.datetime.now().strftime('%Y-%m-%d')
     # ret = os.system("ping baidu.com -n 1")
     # print(ret)
-    ret = subprocess.run("ping www.baidu.com -n 1", shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    a = ret.returncode
-    if a == 200:
-        print(1)
-    else:
-        print(2)
