@@ -62,7 +62,7 @@ class Subprice:
         login_b2.click()
         flag = True
 
-        # 判断登录验证码类型 或没有验证码
+        # # 判断登录验证码类型 或没有验证码
         while flag:
             # 捕获滑块验证
             start_time = time.time()
@@ -70,12 +70,12 @@ class Subprice:
                 time.sleep(2)
                 ver_scroll = self.brow.find_element(by=By.XPATH, value='//*[@id="sliderddnormal"]/div/div[4]/div[3]')
                 flag = True
-                time.sleep(1)
                 dialog_info = self.brow.find_element(by=By.XPATH,
                                                      value='//*[@id="sliderddnormal"]/div/div[4]/div[5]/span').get_attribute(
                     "textContent")
                 if dialog_info.strip() == '拖动滑块填充拼图':
                     logger.info('正在破解滑块验证码')
+                    time.sleep(1)
                     ver_scroll.click()
                 else:
                     raise Exception
@@ -88,7 +88,6 @@ class Subprice:
                 except:
                     flag = False
             if not flag:
-
                 end_time = time.time()
                 if end_time - start_time >= 2:  # 如果超过 几秒 未捕获到弹窗 判断当前网络状态
                     ret = subprocess.run("ping www.baidu.com -n 1", shell=True, stdout=subprocess.PIPE,
@@ -103,8 +102,8 @@ class Subprice:
 
         # try:
         #     self.ver_slidecode()
-        #
-        #     self.click_code()
+        #     sleep(10)
+        #     # self.click_code()
         # except:
         #     flag = False
         #     # 在规定时间内没有捕获到验证码弹窗 判断当前网络状态
@@ -117,28 +116,32 @@ class Subprice:
 
         # 在登录成功后
 
-        try:
-            first_option = self.brow.find_element(by=By.XPATH,
-                                                  value='//*[@id="hp_nfes_homepage"]/span')  # 在登陆界面之后是需要点击首页的选项
-            first_option.click()
-            # self.brow.execute_script("arguments[0].click();", first_option)
-        except selenium.common.exceptions.NoSuchElementException as e:
-            logger.debug(e)
-            logger.info('出现异常，若此异常提示较多，请更换网络环境或是稍后使用')
-            return False
-        logger.info(f'账户 {account} 已成功登录')
-
-        # 飞机票的选项
-
-        sleep(0.5)
-        first_option_tk = self.brow.find_element(by=By.XPATH,
-                                                 value='//*[@id="leftSideNavLayer"]/div/div/div[2]/div/div[1]/div/div[2]/button')
-        '//*[@id="hp_nfes_homepage"]/span'
-        first_option_tk.click()
-        airplane_tk_option = self.brow.find_element(by=By.XPATH,
-                                                    value='//*[@id="leftSideNavLayer"]/div/div/div[2]/div/div[1]/div/div[2]/button')
-        airplane_tk_option.click()
+        # try:
+        #     first_option = self.brow.find_element(by=By.XPATH,
+        #                                           value='//*[@id="hp_nfes_homepage"]/span')  # 在登陆界面之后是需要点击首页的选项
+        #     #first_option.click()
+        #     self.brow.execute_script("arguments[0].click();", first_option)
+        # except Exception as e:#selenium.common.exceptions.NoSuchElementException as e:
+        #     logger.debug(e)
+        #     logger.info('出现异常，若此异常提示较多，请更换网络环境或是稍后使用')
+        #     return False
+        # logger.info(f'账户 {account} 已成功登录')
+        #
+        # # 飞机票的选项
+        #
+        # sleep(0.5)
+        # first_option_tk = self.brow.find_element(by=By.XPATH,
+        #                                          value='//*[@id="leftSideNavLayer"]/div/div/div[2]/div/div[1]/div/div[2]/button')
+        #
+        # first_option_tk.click()
+        # airplane_tk_option = self.brow.find_element(by=By.XPATH,
+        #                                             value='//*[@id="leftSideNavLayer"]/div/div/div[2]/div/div[1]/div/div[2]/button')
+        # airplane_tk_option.click()
         # sleep(0.4)
+        logger.info(f'账户 {account} 已成功登录')
+        sleep(0.5)
+
+        self.brow.get('https://flights.ctrip.com/online/channel/domestic')
         return True
 
     # 滚轮验证码的点击因为不需要滚轮的点击
@@ -281,6 +284,7 @@ class Subprice:
 
         # 爬取航班信息前的处理
 
+        time.sleep(2)
         # 直飞选项
         zhifei_button = self.brow.find_element(by=By.XPATH,
                                                value='//*[@id="hp_container"]/div[2]/div/div[3]/div[2]/div/ul[1]/li[1]/div/span')
@@ -398,12 +402,11 @@ class Subprice:
 
         # 捕获机票售完弹窗信息
         try:
-            sold_out_info = self.brow.find_element(by=By.XPATH, value='//div[@id="content:1656141028600"]')
+            sold_out_info = self.brow.find_element(by=By.XPATH, value='//div[@div="popup-info"]')
             # '您预订的航班机票已售完，请重新查询预订。'
-            '/html/body/div[8]/div/div[3]/div[2]/button'
-            re_search_bt = self.brow.find_element(by=By.XPATH, value='//button[@i-id="重新搜索其他航班"]')
-            # re_search_bt.click()
-            logger.info('当前航班没有余票')
+            if '已售完' in sold_out_info.get_attribute('textContent').strip():
+                # re_search_bt.click()
+                logger.info('当前航班没有余票')
 
         except:
             logger.info('当前航班有余票')
@@ -447,20 +450,48 @@ class Subprice:
             "textContent")
         logger.debug(total_price)
 
+        # 判断有无滑块验证
+        self.brow.switch_to.default_content()
+        time.sleep(2)
         try:
-            time.sleep(2)
-            dia = self.brow.find_element(by=By.XPATH,
-                                         value='//div[@style="position: fixed; outline: 0px; left: 564px; top: 63px; z-index: 1025;"]')
-            logger.info('捕获到弹窗')
+            '''滑块的弹窗的xpath：'/html/body/div[29]/div'''
+            # 滑块的：'//*[@id="J_slider_verification"]/div[1]/div[2]/div/i[1]'
+
+            # dia = self.brow.find_element(by=By.XPATH, value='//div[@style="position: fixed; outline: 0px; left: 564px; top: 63px; z-index: 1025;"]')
+            # sleep(4)
+            # dia = self.brow.find_element(by=By.XPATH, value='/html/body/div[29]/div')
+
+            # '滑块'
             sliding_block = self.brow.find_element(by=By.XPATH,
                                                    value='//*[@id="J_slider_verification"]/div[1]/div[2]/div/i[1]')
+            logger.info('捕获到弹窗')
+            slider_area = self.brow.find_element(by=By.XPATH, value='//*[@id="J_slider_verification"]/div[1]/div[4]')
 
-            sliding = ActionChains(self.brow).click_and_hold(sliding_block)
-            distance = sliding_block.location['x'] + 250  # 偏移距离
-            sliding.move_by_offset(distance, 0).perform()
-            sliding.release().perform()
+            # ActionChains(self.brow).drag_and_drop_by_offset(sliding_block, slider_area.size['width'],
+            #                                                 sliding_block.size['height']).perform()
+            distance = slider_area.size['width'] / 4
+            for i in range(4):
+                ActionChains(self.brow).click_and_hold(sliding_block).move_by_offset(distance, 0).perform()
+                distance += distance
+                time.sleep(0.2)
+            ActionChains(self.brow).click_and_hold(sliding_block).release().perform()
+
+            # sliding = ActionChains(self.brow).click_and_hold(sliding_block)
+            # distance = sliding_block.location['x'] + 250  # 偏移距离
+            # sliding.move_by_offset(distance, 0).perform()
+            # sliding.release().perform()
+
+            # 判断有无第二重图标验证
+            time.sleep(2)
+            try:
+                aa = self.brow.find_element(by=By.XPATH,
+                                            value='//*[@id="J_slider_verification-choose"]/div[2]/div[1]/div/span')
+            except:
+                pass
+
             time.sleep(0.2)
-            continue_bt = self.brow.find_element(by=By.XPATH, value='/html/body/div[25]/div/div[3]/div[2]/button')
+            continue_bt = self.brow.find_element(by=By.XPATH, value='/html/body/div[27]/div/div[3]/div[2]/button')
+            # /html/body/div[25]/div/div[3]/div[2]/button
             continue_bt.click()
         except:
             logger.info('未捕获到验证弹窗')
@@ -468,7 +499,7 @@ class Subprice:
         try:
             ordered = self.brow.find_element(by=By.XPATH, value='//*[@id="J_step2"]/div[1]/div')
             ordered_content = ordered.get_attribute("textContent")
-            if ordered_content.strip() == '15分钟内完成支付，即可预订成功。':
+            if '完成支付' in ordered_content.strip():
                 ordered_flag = True
                 logger.info('成功生成订单，向指定邮箱发送通知')
                 pass
@@ -689,55 +720,85 @@ class Subprice:
         # 根据乘客人数点击 新增乘机人 按钮
         add_passenger_bt = self.brow.find_element(by=By.XPATH, value='.//span[@class="psg-passenger__add-text"]')
 
-        # 填写乘机人信息
-        for i in range(passenger_num):
+        try:
+            # 填写乘机人信息
+            for i in range(passenger_num):
 
-            p_name = self.brow.find_element(by=By.XPATH, value=f'.//input[@id="p_name_{i}"]')
-            p_id = self.brow.find_element(by=By.XPATH, value=f'.//input[@id="p_card_no_{i}"]')
-            try:
-                p_cellphone = self.brow.find_element(by=By.XPATH, value=f'.//input[@id="p_cellphone_{i}"]')
-            except:
-                p_cellphone = self.brow.find_element(by=By.XPATH, value=f'.//input[@id="p_contact_{i}"]')
+                p_name = self.brow.find_element(by=By.XPATH, value=f'.//input[@id="p_name_{i}"]')
+                p_id = self.brow.find_element(by=By.XPATH, value=f'.//input[@id="p_card_no_{i}"]')
+                try:
+                    p_cellphone = self.brow.find_element(by=By.XPATH, value=f'.//input[@id="p_cellphone_{i}"]')
+                except:
+                    p_cellphone = self.brow.find_element(by=By.XPATH, value=f'.//input[@id="p_contact_{i}"]')
 
-            # 姓名
-            p_name.send_keys(passenger_info[i][0])
-            # 身份证
-            p_id.send_keys(passenger_info[i][1])
-            # 电话号码 (可不填)
-            p_cellphone.send_keys(passenger_info[i][2])
-            if i < passenger_num - 1:
-                add_passenger_bt.click()
-                time.sleep(0.5)
+                # 姓名
+                p_name.send_keys(passenger_info[i][0])
+                # 身份证
+                p_id.send_keys(passenger_info[i][1])
+                # 电话号码 (可不填)
+                p_cellphone.send_keys(passenger_info[i][2])
+                if i < passenger_num - 1:
+                    add_passenger_bt.click()
+                    time.sleep(0.5)
 
-        save_order = self.brow.find_element(by=By.XPATH, value='.//a[@id="J_saveOrder"]')
-        time.sleep(0.5)
+            save_order = self.brow.find_element(by=By.XPATH, value='.//a[@id="J_saveOrder"]')
+            time.sleep(0.5)
 
-        save_order.click()
+            save_order.click()
 
-        flight_info = self.brow.find_element(by=By.XPATH, value='.//div[@id="J_flightInfo"]').get_attribute(
-            "textContent")
+            flight_info = self.brow.find_element(by=By.XPATH, value='.//div[@id="J_flightInfo"]').get_attribute(
+                "textContent")
 
-        logger.info(flight_info)
-        total_price = self.brow.find_element(by=By.XPATH, value='.//span[@id="J_totalPrice"]').get_attribute(
-            "textContent")
-        logger.debug(total_price)
-        ordered_flag = False
+            logger.info(flight_info)
+            total_price = self.brow.find_element(by=By.XPATH, value='.//span[@id="J_totalPrice"]').get_attribute(
+                "textContent")
+            logger.debug(total_price)
+            ordered_flag = False
+        except Exception as e:
+            logger.debug(e)
+            logger.info('出现异常等待轮询')
+            return False
 
         # 判断有无滑块验证
-        time.sleep(1)
         try:
-            dia = self.brow.find_element(by=By.XPATH,
-                                         value='//div[@style="position: fixed; outline: 0px; left: 564px; top: 63px; z-index: 1025;"]')
-            logger.info('捕获到弹窗')
+            '''滑块的弹窗的xpath：'/html/body/div[29]/div'''
+            # 滑块的：'//*[@id="J_slider_verification"]/div[1]/div[2]/div/i[1]'
+
+            # dia = self.brow.find_element(by=By.XPATH, value='//div[@style="position: fixed; outline: 0px; left: 564px; top: 63px; z-index: 1025;"]')
+            # sleep(4)
+            # dia = self.brow.find_element(by=By.XPATH, value='/html/body/div[29]/div')
+
+            # '滑块'
             sliding_block = self.brow.find_element(by=By.XPATH,
                                                    value='//*[@id="J_slider_verification"]/div[1]/div[2]/div/i[1]')
+            logger.info('捕获到弹窗')
+            slider_area = self.brow.find_element(by=By.XPATH, value='//*[@id="J_slider_verification"]/div[1]/div[4]')
 
-            sliding = ActionChains(self.brow).click_and_hold(sliding_block)
-            distance = sliding_block.location['x'] + 250  # 偏移距离
-            sliding.move_by_offset(distance, 0).perform()
-            sliding.release().perform()
+            # ActionChains(self.brow).drag_and_drop_by_offset(sliding_block, slider_area.size['width'],
+            #                                                 sliding_block.size['height']).perform()
+            distance = slider_area.size['width'] / 4
+            for i in range(4):
+                ActionChains(self.brow).click_and_hold(sliding_block).move_by_offset(distance, 0).perform()
+                distance += distance
+                time.sleep(0.2)
+            ActionChains(self.brow).click_and_hold(sliding_block).release().perform()
+
+            # sliding = ActionChains(self.brow).click_and_hold(sliding_block)
+            # distance = sliding_block.location['x'] + 250  # 偏移距离
+            # sliding.move_by_offset(distance, 0).perform()
+            # sliding.release().perform()
+
+            # 判断有无第二重图标验证
+            time.sleep(2)
+            try:
+                aa = self.brow.find_element(by=By.XPATH,
+                                            value='//*[@id="J_slider_verification-choose"]/div[2]/div[1]/div/span')
+            except:
+                pass
+
             time.sleep(0.2)
-            continue_bt = self.brow.find_element(by=By.XPATH, value='/html/body/div[25]/div/div[3]/div[2]/button')
+            continue_bt = self.brow.find_element(by=By.XPATH, value='/html/body/div[27]/div/div[3]/div[2]/button')
+            # /html/body/div[25]/div/div[3]/div[2]/button
             continue_bt.click()
         except:
             logger.info('未捕获到验证弹窗')
