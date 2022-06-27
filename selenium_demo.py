@@ -1,26 +1,22 @@
-import os
-
-import selenium
-from selenium.webdriver.common.keys import Keys
-from selenium import webdriver
-from selenium.webdriver.edge.service import Service
-from selenium.webdriver.common.by import By
-from selenium.webdriver.edge.options import Options
-from selenium.webdriver import EdgeOptions
-from lxml import etree
-import time
-import re
-import logging
 import logging.config
-from Send_Email import Send_QQ_Email
-import datetime
+import re
 import subprocess
-
+import time
 from time import sleep
+
 from PIL import Image
+from lxml import etree
+from selenium import webdriver
+from selenium.webdriver import ActionChains
+from selenium.webdriver.common.by import By
+from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.edge.options import Options
+from selenium.webdriver.edge.service import Service
+from selenium.webdriver.support.ui import Select
+
+from Send_Email import Send_QQ_Email
 from chaojiying import Chaojiying_Client
 from dpi_get import WindowsCommon
-from selenium.webdriver import ActionChains
 
 # 配置无头浏览器参数以及规避检测
 edge_options = Options()
@@ -760,6 +756,9 @@ class Subprice:
             return False
 
         # 判断有无滑块验证
+
+        self.brow.switch_to.default_content()
+        time.sleep(2)
         try:
             '''滑块的弹窗的xpath：'/html/body/div[29]/div'''
             # 滑块的：'//*[@id="J_slider_verification"]/div[1]/div[2]/div/i[1]'
@@ -850,16 +849,17 @@ class Subprice:
                 time.sleep(second)
                 count += 1
 
+
 class Train:
     def __init__(self):
         self.brow = webdriver.Edge(service=s, options=edge_options)
         self.brow.get('https://kyfw.12306.cn/otn/resources/login.html')
 
+        # 账号的登录
 
-    #账号的登录
-    def login(self,account,password):
+    def login(self, account, password, passenger_info):
         logger.info(f'开始登陆账户 {account}')
-        #捕捉账号登录的相关xpath
+        # 捕捉账号登录的相关xpath
         user_name = self.brow.find_element(by=By.XPATH, value='//*[@id="J-userName"]')
         user_password = self.brow.find_element(by=By.XPATH, value='//*[@id="J-password"]')
         login_bt = self.brow.find_element(by=By.XPATH, value='//*[@id="J-login"]')
@@ -893,7 +893,7 @@ class Train:
                     logger.info('捕获到弹窗')
                     slider_area = self.brow.find_element(by=By.XPATH, value='//*[@id="nc_1__scale_text"]/span')
                     ActionChains(self.brow).drag_and_drop_by_offset(sliding_block, slider_area.size['width'],
-                                                                sliding_block.size['height']).perform()
+                                                                    sliding_block.size['height']).perform()
 
                     print(4)
                     if True:
@@ -911,7 +911,7 @@ class Train:
                         pass
                     pass
 
-        #登录成功之后：添加乘客信息
+        # 登录成功之后：添加乘客信息
         sleep(1)
         logger.info('登录成功')
         self.brow.get('https://kyfw.12306.cn/otn/view/passengers.html')
@@ -921,25 +921,23 @@ class Train:
         # passenger_bt = self.brow.find_element(by=By.XPATH, value='//*[@id="cylianxiren"]/a')
         # passenger_bt.click()
 
-        #跳转之后添加乘车人的信息
+        # 跳转之后添加乘车人的信息
 
-        #姓名的xpath: '//*[@id="content_list"]/div/div[2]/table/tbody/tr[1]/td[2]/div
-    #     //*[@id="content_list"]/div/div[2]/table/tbody/tr[2]/td[2]/div
+        # 姓名的xpath: '//*[@id="content_list"]/div/div[2]/table/tbody/tr[1]/td[2]/div
+        #     //*[@id="content_list"]/div/div[2]/table/tbody/tr[2]/td[2]/div
 
-
-    # //*[@id="content_list"]/div/div[2]/table/tbody
+        # //*[@id="content_list"]/div/div[2]/table/tbody
         sleep(3)
         i = 1
         name_list = []
         while True:
             try:
-                now_name = self.brow.find_element(by=By.XPATH, value=f'//*[@id="content_list"]/div/div[2]/table/tbody/tr[{i}]/td[2]/div')
+                now_name = self.brow.find_element(by=By.XPATH,
+                                                  value=f'//*[@id="content_list"]/div/div[2]/table/tbody/tr[{i}]/td[2]/div')
                 name_list.append(now_name.text)
-                i+=1
+                i += 1
             except:
                 break
-        passenger_info = [['李欢', '500221200208274316', '15723114723'],
-                          ['许茂森', '500222199908184320', '15310829546'],['李茂','500222199908184320','15301829546']]
         for i in passenger_info:
             if i[0] not in name_list:
 
@@ -955,7 +953,7 @@ class Train:
                 save_bt.click()
                 try:
                     erro = self.brow.find_element(by=By.XPATH, value='//*[@id="pop_165624530613827184"]/div[2]/div[2]')
-                    logger.info(erro.text+f'{i[0]}添加失败')
+                    logger.info(erro.text + f'{i[0]}添加失败')
                     self.brow.get('https://kyfw.12306.cn/otn/view/passengers.html')
                 except Exception as e:
                     back = self.brow.find_element(by=By.XPATH, value='//*[@id="J-verification-way"]/div[2]/div[3]/a[1]')
@@ -964,6 +962,176 @@ class Train:
 
         sleep(2)
         self.brow.get('https://kyfw.12306.cn/otn/leftTicket/init?linktypeid=dc')
+        return True
+
+    def generate_order(self, from_station, to_station, depart_date, train_type_option, passenger_info,
+                       seat_type_option):
+        # 出发站点 目的站点 出发日期 车次类型
+        seat_type_dic = {2: '商务座/特等座', 3: '一等座', 4: '二等座/二等包座', 5: '高级软卧', 6: '软卧/一等卧', 7: '动卧', 8: '硬卧/二等卧', 9: '软座',
+                         10: '硬座', 11: '无座'}
+        depart_date = '-'.join(depart_date)
+
+        # 出发站点
+        from_lable = self.brow.find_element(by=By.XPATH, value='//*[@id="fromStationText"]')
+        from_lable.click()
+        from_lable.send_keys(from_station)
+        from_lable.send_keys(Keys.ENTER)
+
+        # 到达站点
+        to_lable = self.brow.find_element(by=By.XPATH, value='//*[@id="toStationText"]')
+        to_lable.click()
+        # to_lable.clear()
+        to_lable.send_keys(to_station)
+        to_lable.send_keys(Keys.ENTER)
+
+        # 日期
+        date_lable = self.brow.find_element(by=By.XPATH, value='//*[@id="train_date"]')
+        date_lable.click()
+        date_lable.clear()
+        date_lable.send_keys(depart_date)
+        date_lable.send_keys(Keys.ENTER)
+
+        date_li = self.brow.find_element(by=By.XPATH, value='//*[@id="date_icon_1"]')
+        date_li.click()
+
+        # 查询按钮
+        search_bt = self.brow.find_element(by=By.XPATH, value='//*[@id="query_ticket"]')
+        self.brow.execute_script("arguments[0].click();", search_bt)
+
+        # 筛选出发站点，首先与用户输入出发站进行匹配
+        try:
+            time.sleep(1)
+            from_station = self.brow.find_element(by=By.XPATH, value=f'//*[@id="cc_from_station_{from_station}"]')
+            from_station.click()
+        except Exception as e:
+            logger.debug(e)
+            logger.info('未能找到出发站点，请检查站点名称，重新输入')
+            return False
+        logger.info('匹配到出发站点')
+        # 选择车次类型,并判断当前车次类型有无车次
+        # 选择所有车次按钮，当用户指定的车次类型 车次为0 时，选用全部车次类型
+        train_type_all = self.brow.find_element(by=By.XPATH, value='//*[@id="cc_train_type_btn_all"]')
+        # 车次类型选择
+        train_type = self.brow.find_element(by=By.XPATH,
+                                            value=f'//*[@id="_ul_station_train_code"]/li[{train_type_option}]')
+        train_type.click()
+        time.sleep(0.5)
+        # 判断当前车次类型是否车次数是否为 0
+        train_num = int(self.brow.find_element(by=By.XPATH, value='//*[@id="trainum"]').get_attribute('textContent'))
+        if train_num == 0:
+            train_type_all.click()
+        time.sleep(0.5)
+        train_num = int(self.brow.find_element(by=By.XPATH, value='//*[@id="trainum"]').get_attribute('textContent'))
+
+        # 时间段限制
+        start_t = 12
+        end_t = 18
+        ticket_flag = False
+        # 开始查找有无符号条件的班次
+        logger.info('开始查找符合条件的班次')
+        tr_index = 1
+        for i in range(train_num):
+            # 判断终点站点 是否与目标终点站一致
+            des_info = self.brow.find_element(by=By.XPATH,
+                                              value=f'//*[@id="train_num_{i}"]/div[2]/strong[2]').get_attribute(
+                'textContent')
+            if des_info.strip() == to_station:
+                # 判断出发时间是否符合要求
+                st_t = int(self.brow.find_element(by=By.XPATH,
+                                                  value=f'//*[@id="train_num_{i}"]/div[3]/strong[1]').get_attribute(
+                    'textContent').split(':')[0])
+                if start_t <= st_t < end_t:
+                    # 时间满足要求 获取对应舱位余票信息
+                    left_ = self.brow.find_element(by=By.XPATH,
+                                                   value=f'//*[@id="queryLeftTable"]//tr[{tr_index}]/td[{seat_type_option}]').get_attribute(
+                        'textContent')
+                    # 当前的车次
+                    train_title = self.brow.find_element(by=By.XPATH,
+                                                         value=f'//*[@id="queryLeftTable"]//tr[{tr_index}]/td[1]/div/div[1]/div/a').get_attribute(
+                        'textContent')
+                    # 判断余票 可能出现 '--' '无' '有' '数字'
+                    if left_ == '--' or left_ == '无':
+                        logger.info(f'车次 {train_title} {seat_type_dic[seat_type_option]} 无余票,继续寻找下一个班次')
+                    elif left_ == '有':
+                        logger.info(f'车次 {train_title} {seat_type_dic[seat_type_option]} 有 余票(有 意味着余票较多)')
+                        ticket_flag = True
+                        break
+                    else:
+                        logger.info(f'车次 {train_title} {seat_type_dic[seat_type_option]} 余票数量为 {left_}')
+                        # 判断余票数量与当前购票人数
+                        if int(left_) >= len(passenger_info):
+                            logger.info('余票数量大于乘车人数，可以正常购买')
+                            ticket_flag = True
+                            break
+                        else:
+                            # logger.info('余票数量小于乘车人数，系统将按照乘车信息先后顺序进行购票')
+                            logger.info('余票数量小于乘车人数，继续寻找下一个班次')
+            tr_index += 2
+        if not ticket_flag:
+            logger.info('无符合条件的班次，请更改条件，再次购票')
+            return False
+
+        # 有足够余票，进行购票操作
+        logger.info('开始生成订单')
+        time.sleep(0.5)
+        order_bt = self.brow.find_element(by=By.XPATH, value=f'//*[@id="queryLeftTable"]//tr[{tr_index}]/td[13]/a')
+        order_bt.click()
+
+        # 选取乘车人
+        # 从 passenger_info里面挨个读取姓名，进行选择 (这里忽略重名情况)
+        passenger_num = len(passenger_info)
+        for i in range(passenger_num):
+            time.sleep(0.5)
+            name_search_bt = self.brow.find_element(by=By.XPATH, value='//*[@id="quickQueryPassenger_id"]')
+            name_search_bt.click()
+            time.sleep(0.4)
+            name_search_bt.clear()
+            name_search_bt.click()
+            name_search_bt.send_keys(passenger_info[i][0])
+
+            # 选择按钮
+            # 判断当前选择的乘车人是否能够乘车
+
+            time.sleep(1)
+            select_info = self.brow.find_element(by=By.XPATH, value='//*[@id="normal_passenger_id"]/li').get_attribute(
+                'title')
+            if '修改身份信息' in select_info:
+                logger.info(f'{passenger_info[i][0]} 乘车人信息有误，系统将不为该乘客购票')
+            else:
+                select_bt = self.brow.find_element(by=By.XPATH, value='//*[@id="normal_passenger_id"]/li/label')
+                select_bt.click()
+                # self.brow.execute_script('arguments[0].click();', select_bt)
+
+            # 利用下拉选择框 进行选择座位类型
+            # se = Select(self.brow.find_element(by=By.ID, value=f'seatType_{i + 1}'))
+
+        time.sleep(2)
+        sumbit_bt = self.brow.find_element(by=By.XPATH, value='//*[@id="submitOrder_id"]')
+        sumbit_bt.click()
+
+        # 座位位置的选择，暂不设置
+
+        # 确认购票
+        self.brow.switch_to.default_content()
+        time.sleep(1)
+        qr_submit_bt = self.brow.find_element(by=By.XPATH, value='//*[@id="qr_submit_id"]')
+        qr_submit_bt.click()
+
+        # 判断购买是否成功
+        start_time = time.time()
+        while True:
+            try:
+                sleep(0.5)
+                pay_bt = self.brow.find_element(by=By.XPATH, value='//*[@id="payButton"]')
+                logger.info('订单生成成功，请及时登录12306网站进行支付')
+                break
+            except:
+                end_time = time.time()
+                if end_time - start_time < 1:
+                    logger.info('订单已提交，等待12306系统回应')
+                elif end_time - start_time > 120:
+                    logger.info('订单长时间未得到响应，可能购买成功，可以登入12306进行查看')
+                    break
 
 
 
@@ -997,3 +1165,12 @@ if __name__ == '__main__':
     # current_datetime = datetime.datetime.now().strftime('%Y-%m-%d')
     # ret = os.system("ping baidu.com -n 1")
     # print(ret)
+    
+    #12306测试部分
+    from_station = '长寿湖'
+    to_station = '重庆北'
+    seat_type_option = 4
+    train = Train()
+    status = train.login(account, password,passenger_info)
+    if status:
+        train.generate_order(from_station, to_station, depart_date, class_option, passenger_info, seat_type_option)
