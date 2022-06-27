@@ -850,6 +850,120 @@ class Subprice:
                 time.sleep(second)
                 count += 1
 
+class Train:
+    def __init__(self):
+        self.brow = webdriver.Edge(service=s, options=edge_options)
+        self.brow.get('https://kyfw.12306.cn/otn/resources/login.html')
+
+
+    #账号的登录
+    def login(self,account,password):
+        logger.info(f'开始登陆账户 {account}')
+        #捕捉账号登录的相关xpath
+        user_name = self.brow.find_element(by=By.XPATH, value='//*[@id="J-userName"]')
+        user_password = self.brow.find_element(by=By.XPATH, value='//*[@id="J-password"]')
+        login_bt = self.brow.find_element(by=By.XPATH, value='//*[@id="J-login"]')
+        user_name.send_keys(account)
+        user_password.send_keys(password)
+        login_bt.click()
+        sleep(1.5)
+        sliding_block = self.brow.find_element(by=By.XPATH,
+                                               value='//*[@id="nc_1_n1z"]')
+
+        logger.info('捕获到弹窗')
+        slider_area = self.brow.find_element(by=By.XPATH, value='//*[@id="nc_1__scale_text"]/span')
+
+        ActionChains(self.brow).drag_and_drop_by_offset(sliding_block, slider_area.size['width'],
+                                                        sliding_block.size['height']).perform()
+        flag = False
+        try:
+            sleep(2)
+            self.brow.switch_to.default_content()
+            sleep(1)
+            yq_bt = self.brow.find_element(by=By.XPATH, value='/html/body/div[2]/div[7]/div[2]')
+            flag = True
+        except Exception as e:
+            while True:
+                try:
+                    fresh_bt = self.brow.find_element(by=By.XPATH, value='//*[@id="nc_1_refresh1"]')
+                    fresh_bt.click()
+                    sleep(1)
+                    sliding_block = self.brow.find_element(by=By.XPATH,
+                                                           value='//*[@id="nc_1_n1z"]')
+                    logger.info('捕获到弹窗')
+                    slider_area = self.brow.find_element(by=By.XPATH, value='//*[@id="nc_1__scale_text"]/span')
+                    ActionChains(self.brow).drag_and_drop_by_offset(sliding_block, slider_area.size['width'],
+                                                                sliding_block.size['height']).perform()
+
+                    print(4)
+                    if True:
+                        break
+                except Exception as e:
+                    try:
+                        self.brow.switch_to.default_content()
+                        sleep(2)
+                        yq_bt = self.brow.find_element(by=By.XPATH,
+                                                       value='/html/body/div[2]/div[7]/div[2]')
+                        flag = True
+                        if flag:
+                            break
+                    except:
+                        pass
+                    pass
+
+        #登录成功之后：添加乘客信息
+        sleep(1)
+        logger.info('登录成功')
+        self.brow.get('https://kyfw.12306.cn/otn/view/passengers.html')
+        # if not flag:
+        #     yq_bt = self.brow.find_element(by=By.XPATH, value='//*[@id="pop_165623983124549719"]/div[2]/div[3]/a')
+        #     yq_bt.click()
+        # passenger_bt = self.brow.find_element(by=By.XPATH, value='//*[@id="cylianxiren"]/a')
+        # passenger_bt.click()
+
+        #跳转之后添加乘车人的信息
+
+        #姓名的xpath: '//*[@id="content_list"]/div/div[2]/table/tbody/tr[1]/td[2]/div
+    #     //*[@id="content_list"]/div/div[2]/table/tbody/tr[2]/td[2]/div
+
+
+    # //*[@id="content_list"]/div/div[2]/table/tbody
+        sleep(3)
+        i = 1
+        name_list = []
+        while True:
+            try:
+                now_name = self.brow.find_element(by=By.XPATH, value=f'//*[@id="content_list"]/div/div[2]/table/tbody/tr[{i}]/td[2]/div')
+                name_list.append(now_name.text)
+                i+=1
+            except:
+                break
+        passenger_info = [['李欢', '500221200208274316', '15723114723'],
+                          ['许茂森', '500222199908184320', '15310829546'],['李茂','500222199908184320','15301829546']]
+        for i in passenger_info:
+            if i[0] not in name_list:
+
+                add_contact = self.brow.find_element(by=By.XPATH, value='//*[@id="add_contact"]')
+                add_contact.click()
+                name = self.brow.find_element(by=By.XPATH, value='//*[@id="name"]')
+                cardcode = self.brow.find_element(by=By.XPATH, value='//*[@id="cardCode"]')
+                tele = self.brow.find_element(by=By.XPATH, value='//*[@id="mobileNo"]')
+                save_bt = self.brow.find_element(by=By.XPATH, value='//*[@id="save_btn"]')
+                name.send_keys(i[0])
+                cardcode.send_keys(i[1])
+                tele.send_keys(i[2])
+                save_bt.click()
+                try:
+                    erro = self.brow.find_element(by=By.XPATH, value='//*[@id="pop_165624530613827184"]/div[2]/div[2]')
+                    logger.info(erro.text+f'{i[0]}添加失败')
+                    self.brow.get('https://kyfw.12306.cn/otn/view/passengers.html')
+                except Exception as e:
+                    back = self.brow.find_element(by=By.XPATH, value='//*[@id="J-verification-way"]/div[2]/div[3]/a[1]')
+                    logger.info(f'{i[0]}添加成功')
+                    back.click()
+
+        sleep(2)
+        self.brow.get('https://kyfw.12306.cn/otn/leftTicket/init?linktypeid=dc')
 
 
 
