@@ -166,12 +166,12 @@ class Subprice:
 
         # 顺序点击的验证码
 
-    def click_code(self):
+        def click_code(self, code_img_ele, element, login_bt):
         logger.info('正在破解图标验证码')
         # 首先截图
         sleep(3)
         self.brow.save_screenshot('aa.png')  # 对当前页面保存
-        code_img_ele = self.brow.find_element(by=By.XPATH, value='//*[@id="sliderddnormal"]/div')
+        # code_img_ele = self.brow.find_element(by=By.XPATH, value='//*[@id="sliderddnormal"]/div')
         location = code_img_ele.location  # x,y
         # print(location)
         logger.debug(f'验证码图片坐标{location}')
@@ -208,14 +208,14 @@ class Subprice:
             one_local = dic.split(',')
             locations = [[one_local[0], one_local[1]]]
 
-        element = self.brow.find_element(by=By.XPATH, value='//*[@id="sliderddnormal"]/div')
+        # element = self.brow.find_element(by=By.XPATH, value='//*[@id="sliderddnormal"]/div')
         for location_1 in locations:
             x = location_1[0] / dpi_num
             y = location_1[1] / dpi_num
             ActionChains(self.brow).move_to_element_with_offset(element, x, y).click().perform()
-        login_bt = self.brow.find_element(by=By.XPATH, value='//*[@id="hp_nfes_accountbar"]/li[1]/div/button')
+        # login_bt = self.brow.find_element(by=By.XPATH, value='//*[@id="hp_nfes_accountbar"]/li[1]/div/button')
         login_bt.click()
-
+        
     def generate_order(self, from_, to_, depart_date, back_date, depart_option, back_option, class_option, ticket_type,
                        passenger_info):
         status = False
@@ -857,8 +857,8 @@ class Train:
 
         # 账号的登录
 
-    def login(self, account, password, passenger_info):
-        logger.info(f'开始登陆账户 {account}')
+        def login(self, account, password, passenger_info):
+        logger.info(f'开始登陆12306账户 {account}')
         # 捕捉账号登录的相关xpath
         user_name = self.brow.find_element(by=By.XPATH, value='//*[@id="J-userName"]')
         user_password = self.brow.find_element(by=By.XPATH, value='//*[@id="J-password"]')
@@ -866,9 +866,13 @@ class Train:
         user_name.send_keys(account)
         user_password.send_keys(password)
         login_bt.click()
-        sleep(1.5)
-        sliding_block = self.brow.find_element(by=By.XPATH,
-                                               value='//*[@id="nc_1_n1z"]')
+        while True:
+            try:
+                sliding_block = self.brow.find_element(by=By.XPATH,
+                                                       value='/html/body/div[1]/div[4]/div[2]/div[2]/div/div/div[2]/div/div[1]/span')
+                break
+            except Exception as e:
+                pass
 
         logger.info('捕获到弹窗')
         slider_area = self.brow.find_element(by=By.XPATH, value='//*[@id="nc_1__scale_text"]/span')
@@ -890,26 +894,33 @@ class Train:
                     sleep(1)
                     sliding_block = self.brow.find_element(by=By.XPATH,
                                                            value='//*[@id="nc_1_n1z"]')
-                    logger.info('捕获到弹窗')
+                    logger.info('捕获到滑块验证码刷新弹窗')
                     slider_area = self.brow.find_element(by=By.XPATH, value='//*[@id="nc_1__scale_text"]/span')
                     ActionChains(self.brow).drag_and_drop_by_offset(sliding_block, slider_area.size['width'],
                                                                     sliding_block.size['height']).perform()
 
-                    print(4)
                     if True:
                         break
                 except Exception as e:
                     try:
+                        try:
+                            password_erro = self.brow.find_element(by=By.XPATH, value='//*[@id="J-login-error"]/span')
+                            logger.info('登录密码错误')
+                            return False
+                        except:
+                            pass
                         self.brow.switch_to.default_content()
+                        logger.info('捕获疫情弹窗之前')
                         sleep(2)
                         yq_bt = self.brow.find_element(by=By.XPATH,
                                                        value='/html/body/div[2]/div[7]/div[2]')
+                        logger.info('捕获到疫情弹窗')
                         flag = True
                         if flag:
                             break
                     except:
+                        logger.info('未捕获到疫情弹窗')
                         pass
-                    pass
 
         # 登录成功之后：添加乘客信息
         sleep(1)
@@ -952,13 +963,23 @@ class Train:
                 tele.send_keys(i[2])
                 save_bt.click()
                 try:
-                    erro = self.brow.find_element(by=By.XPATH, value='//*[@id="pop_165624530613827184"]/div[2]/div[2]')
+                    self.brow.switch_to.default_content()
+                    sleep(1)
+                    erro = self.brow.find_element(by=By.XPATH, value='/html/body/div[4]/div[2]/div[2]/div/div[2]/h2')
                     logger.info(erro.text + f'{i[0]}添加失败')
                     self.brow.get('https://kyfw.12306.cn/otn/view/passengers.html')
                 except Exception as e:
-                    back = self.brow.find_element(by=By.XPATH, value='//*[@id="J-verification-way"]/div[2]/div[3]/a[1]')
-                    logger.info(f'{i[0]}添加成功')
-                    back.click()
+                    sleep(1)
+                    try:
+                        tele_erro = self.brow.find_element(by=By.XPATH,
+                                                           value='/html/body/div[2]/div[2]/div[2]/form/div/div[2]/div[2]/div[2]/div[2]/div[2]/label')
+                        logger.info(f'{i[0]}添加失败' + tele_erro.text)
+                        self.brow.get('https://kyfw.12306.cn/otn/view/passengers.html')
+                    except:
+                        back = self.brow.find_element(by=By.XPATH,
+                                                      value='//*[@id="J-verification-way"]/div[2]/div[3]/a[1]')
+                        logger.info(f'{i[0]}添加成功')
+                        back.click()
 
         sleep(2)
         self.brow.get('https://kyfw.12306.cn/otn/leftTicket/init?linktypeid=dc')
