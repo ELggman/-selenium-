@@ -1,0 +1,17 @@
+<RCC>
+  <qresource prefix="image">
+    <file>酒店2.jpg</file>
+    <file>22更改5050.jpg</file>
+    <file>火车5050.png</file>
+  </qresource>
+  <qresource prefix="icons">
+    <file>帮助.png</file>
+    <file>乘客.png</file>
+    <file>飞机.png</file>
+    <file>飞机1.png</file>
+    <file>高铁.png</file>
+    <file>关闭.png</file>
+    <file>最大化.png</file>
+    <file>最小化.png</file>
+  </qresource>
+</RCC>
